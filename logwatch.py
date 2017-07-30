@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QDesktopWidget
     )
 from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import QCoreApplication
+from logview import LogView
 
 
 class LogWatchWindow(QMainWindow):
@@ -68,6 +68,8 @@ class LogWatchWindow(QMainWindow):
         self.toolbar = self.addToolBar('Search')
         self.toolbar.addAction(self.watchAction)
 
+        logWatch = LogView([], [])
+        self.setCentralWidget(logWatch)
         self.resize(800, 600)
         self.center()
         self.setWindowTitle('LogWatch')
@@ -77,7 +79,9 @@ class LogWatchWindow(QMainWindow):
 
     def closeEvent(self, event):
 
-        reply = QMessageBox.question(self, 'You sure?',
+        reply = QMessageBox.question(
+            self,
+            'You sure?',
             'Are you sure you want to leave this awesome app?',
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
@@ -94,6 +98,7 @@ class LogWatchWindow(QMainWindow):
 
 
 if __name__ == '__main__':
+
     app = QApplication(sys.argv)
     lgw = LogWatchWindow()
     sys.exit(app.exec_())
