@@ -4,13 +4,16 @@ from PyQt5.QtWidgets import (
     QWidget, QMainWindow, QToolTip, QPushButton,
     QDesktopWidget, QFileDialog, QInputDialog
     )
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QTextCharFormat
 from logview import LogView
+from highlighter import HighlightRule, Highlighter
+from PyQt5.QtCore import QRegularExpression, Qt
+from watch import Watch
 
 
 class LogWatchWindow(QMainWindow):
 
-    """docstring for Example"""
+    """Custom QMainWindow for all the magic"""
 
     def __init__(self):
         super().__init__()
@@ -46,8 +49,16 @@ class LogWatchWindow(QMainWindow):
             self)
         self.watchAction.setShortcut('Ctrl+W')
         self.watchAction.setStatusTip(
-            'Watch the log file for occurences of a particular string.')
+            'Watch the log file for occurrences of a particular RegEx pattern')
         self.watchAction.triggered.connect(self.watchFor)
+
+        self.refreshAction = QAction(
+            QIcon('icons/view-refresh.png'),
+            '&Refresh',
+            self)
+        self.refreshAction.setShortcut('F5')
+        self.refreshAction.setStatusTip('Manually refresh teh log view')
+        self.refreshAction.triggered.connect(self.refreshLogView)
 
         self.aboutAction = QAction(
             QIcon('icons/help-about.png'),
@@ -64,20 +75,28 @@ class LogWatchWindow(QMainWindow):
 
         self.toolsMenu = self.menubar.addMenu('&Tools')
         self.toolsMenu.addAction(self.watchAction)
+        self.toolsMenu.addAction(self.refreshAction)
 
         self.helpMenu = self.menubar.addMenu('&Help')
         self.helpMenu.addAction(self.aboutAction)
 
-        self.toolbar = self.addToolBar('Search')
+        self.toolbar = self.addToolBar('Tools')
         self.toolbar.addAction(self.watchAction)
+        self.toolbar.addAction(self.refreshAction)
 
         self.logView = LogView([], [])
         self.setCentralWidget(self.logView)
 
+        self.rules = []
+        self.highlighter = Highlighter(self.logView.document(), self.rules)
+
         self.pattern = ''  # pattern to be matched
-        # explicitly define this since
+        # explicitly define these since
         # we'll be testing for it later
         self.fileContents = ''
+        self.logFile = ''
+
+        self.watch = None
 
         self.resize(400, 500)
         self.setWindowTitle('LogWatch')
@@ -93,6 +112,8 @@ class LogWatchWindow(QMainWindow):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
+            if self.watch:
+                self.watch.stop()
             event.accept()
         else:
             event.ignore()
@@ -109,12 +130,25 @@ class LogWatchWindow(QMainWindow):
             'Choose a log file',
             '/var/log')
         if fname[0]:
+            try:
+                f = open(fname[0], 'r')
+            except Exception as e:
+                self.statusBar().showMessage('Error: ' + str(e))
+                return
             self.logFile = fname[0]
-            f = open(fname[0], 'r')
             with f:
-                self.fileContents = f.read()
-                self.statusBar().showMessage('Log file loaded!')
-                self.updateLogView()
+                try:
+                    self.fileContents = f.read()
+                    if not self.watch:
+                        self.watch = Watch(self.logFile, self.refreshLogView)
+                        self.watch.start()
+                    else:
+                        self.watch.updatePath(self.logFile)
+                    self.statusBar().showMessage('Log file loaded!')
+                    self.updateLogView()
+                except Exception as e:
+                    self.statusBar().showMessage('Error: ' + str(e))
+                    self.logFile = ''
         else:
             self.statusBar().showMessage('Please select a log file!')
 
@@ -131,6 +165,12 @@ class LogWatchWindow(QMainWindow):
                 self.statusBar().showMessage("Error: " + str(e))
                 return
             self.pattern = str(text)
+            patternFormat = QTextCharFormat()
+            patternFormat.setForeground(Qt.darkRed)
+            patternFormat.setFontWeight(QFont.Bold)
+            patternReg = QRegularExpression(self.pattern)
+            self.rules = [HighlightRule(patternReg, patternFormat)]
+            self.highlighter.updateRules(self.rules)
             self.updateLogView()
             self.statusBar().showMessage("Matching: " + self.pattern)
 
@@ -162,6 +202,19 @@ class LogWatchWindow(QMainWindow):
                 "Matched " + str(len(self.fileContentsList)) + " occurences!")
             self.logView.updateContents(
                 self.fileContentsList, self.fileLineNumbers)
+
+    def refreshLogView(self, event):
+        if not self.logFile:
+            return
+        try:
+            f = open(self.logFile, 'r')
+        except Exception as e:
+            self.statusBar().showMessage('Error: ' + str(e))
+            return
+        with f:
+            self.fileContents = f.read()
+            self.statusBar().showMessage('Refreshed!')
+            self.updateLogView()
 
     def showAbout(self, event):
         QMessageBox.about(self, "About", """
