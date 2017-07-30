@@ -34,6 +34,7 @@ class LogView(QPlainTextEdit):
     def updateContents(self, contents, lineNumbers):
         self.contents = contents
         self.lineNumbers = lineNumbers
+        self.setPlainText('\n'.join(self.contents))
         self.repaint()
 
     def gutterAreaWidth(self):
@@ -85,7 +86,8 @@ class LogView(QPlainTextEdit):
         # fill out  rect for the gutter
         painter = QPainter(self.gutter)
         painter.fillRect(event.rect(), Qt.lightGray)
-        if (len(self.lineNumbers) < 1): return
+        if (len(self.lineNumbers) < 1):
+            return
         # each line is a block,
         # so we get the first visible block then loop over the rest
         block = self.firstVisibleBlock()

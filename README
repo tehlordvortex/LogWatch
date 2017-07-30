@@ -12,9 +12,19 @@ Why not grep? Just cause.
 
 TODO:
 =====
-* Core functionality
+* Actually watch the file and update on the fly
 * Notifications
+
+DONE:
+=====
+* Core functionality
 
 Why?
 ====
 See line 11. Also, to learn Qt and Python.
+
+Technologies Used
+=================
+* Qt5: https://qt.io/
+* PyQt5: https://www.riverbankcomputing.com/software/pyqt/download5
+* Python 3: https://pythong.org/
