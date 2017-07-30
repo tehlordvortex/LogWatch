@@ -1,0 +1,20 @@
+LOGWATCH
+========
+
+Logwatch is a simple app for watching log files.
+
+Possible use cases:
+===================
+* You want to be notified when errors occur
+* You need some data from the logs
+
+Why not grep? Just cause.
+
+TODO:
+=====
+* Core functionality
+* Notifications
+
+Why?
+====
+See line 11. Also, to learn Qt and Python.
