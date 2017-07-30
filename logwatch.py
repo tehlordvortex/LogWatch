@@ -229,7 +229,10 @@ class LogWatchWindow(QMainWindow):
                     Qt5
                 </a> and 
                 <a href="https://python.org">
-                Python
+                    Python
+                </a>,
+                <a href="https://pypi.python.org/pypi/watchdog">
+                    Watchdog
                 </a>.
             </p>
             <p>Icons from: 
