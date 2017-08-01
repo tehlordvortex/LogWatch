@@ -1,8 +1,9 @@
 import sys, re
 from PyQt5.QtWidgets import (
     QMessageBox, QApplication, QAction,
-    QWidget, QMainWindow, QToolTip, QPushButton,
-    QDesktopWidget, QFileDialog, QInputDialog
+    QWidget, QMainWindow, QSystemTrayIcon,
+    QDesktopWidget, QFileDialog, QInputDialog,
+    QMenu
     )
 from PyQt5.QtGui import QIcon, QFont, QTextCharFormat
 from logview import LogView
@@ -21,8 +22,6 @@ class LogWatchWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
-
-        QToolTip.setFont(QFont('SansSerif', 10))
 
         self.statusBar().showMessage('Ready')
 
@@ -67,10 +66,25 @@ class LogWatchWindow(QMainWindow):
         self.aboutAction.setStatusTip('About this application.')
         self.aboutAction.triggered.connect(self.showAbout)
 
+        self.minimizeToTrayAction = QAction(
+            QIcon(''),
+            '&Minimize to tray',
+            self)
+        self.minimizeToTrayAction.setShortcut('Ctrl+T')
+        self.minimizeToTrayAction.setStatusTip('Minimizes to the system tray')
+        self.minimizeToTrayAction.triggered.connect(self.minimizeToTray)
+
+        self.showAction = QAction(
+            QIcon(''),
+            'Show Window',
+            self)
+        self.showAction.triggered.connect(self.showWindow)
+
         self.menubar = self.menuBar()
 
         self.fileMenu = self.menubar.addMenu('&File')
         self.fileMenu.addAction(self.openAction)
+        self.fileMenu.addAction(self.minimizeToTrayAction)
         self.fileMenu.addAction(self.exitAction)
 
         self.toolsMenu = self.menubar.addMenu('&Tools')
@@ -86,6 +100,15 @@ class LogWatchWindow(QMainWindow):
 
         self.logView = LogView([], [])
         self.setCentralWidget(self.logView)
+
+        self.trayIcon = QSystemTrayIcon(QIcon('icons/edit-paste.png'), self)
+        self.trayIcon.setToolTip("Ready!")
+        self.trayIconMenu = QMenu()
+        self.trayIcon.setContextMenu(self.trayIconMenu)
+        self.trayIcon.contextMenu().addMenu(self.fileMenu)
+        self.trayIcon.contextMenu().addMenu(self.toolsMenu)
+        self.trayIcon.contextMenu().addMenu(self.helpMenu)
+        self.trayIcon.contextMenu().addAction(self.showAction)
 
         self.rules = []
         self.highlighter = Highlighter(self.logView.document(), self.rules)
@@ -152,6 +175,15 @@ class LogWatchWindow(QMainWindow):
         else:
             self.statusBar().showMessage('Please select a log file!')
 
+    def minimizeToTray(self, event):
+        if self.isVisible():
+            self.hide()
+            self.trayIcon.setVisible(True)
+
+    def showWindow(self, event):
+        self.show()
+        self.trayIcon.setVisible(False)
+
     def watchFor(self, event):
         text, ok = QInputDialog.getText(
             self,
@@ -198,6 +230,10 @@ class LogWatchWindow(QMainWindow):
                     self.fileContentsList = []
                     self.fileLineNumbers = []
                     return
+            if self.trayIcon.isVisible():
+                self.trayIcon.showMessage(
+                    "New match!",
+                    self.fileContentsList[-1])
             self.statusBar().showMessage(
                 "Matched " + str(len(self.fileContentsList)) + " occurences!")
             self.logView.updateContents(
