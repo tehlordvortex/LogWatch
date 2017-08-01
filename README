@@ -12,12 +12,14 @@ Why not grep? Just cause.
 
 TODO:
 =====
-* Notifications
+* Fix issues
 
 DONE:
 =====
 * Core functionality
 * Actually watch the file and update on the fly
+* Notifications
+
 
 Why?
 ====
