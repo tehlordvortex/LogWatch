@@ -119,6 +119,9 @@ class LogWatchWindow(QMainWindow):
         self.fileContents = ''
         self.logFile = ''
 
+        self.dirty = False
+        self.runOnShow = []
+
         self.watch = None
 
         self.resize(400, 500)
@@ -151,7 +154,8 @@ class LogWatchWindow(QMainWindow):
         fname = QFileDialog.getOpenFileName(
             self,
             'Choose a log file',
-            '/var/log')
+            #'/var/log')
+            '/home/vortex/Coding/files/projects/python/LogWatch')
         if fname[0]:
             try:
                 f = open(fname[0], 'r')
@@ -182,13 +186,19 @@ class LogWatchWindow(QMainWindow):
 
     def showWindow(self, event):
         self.show()
+        for item in self.runOnShow:
+            item()
+        self.runOnShow = []
+        self.logView.updateContentSignal.emit(
+            self.fileContentsList, self.fileLineNumbers)
         self.trayIcon.setVisible(False)
 
     def watchFor(self, event):
         text, ok = QInputDialog.getText(
             self,
             'Input pattern',
-            'Regular Expression Pattern to match: ')
+            'Regular Expression Pattern to match: ',
+            text=self.pattern)
         if ok:
             # error checking
             try:
@@ -212,8 +222,9 @@ class LogWatchWindow(QMainWindow):
             self.fileLineNumbers = []
             for i in range(0, len(self.fileContentsList)):
                 self.fileLineNumbers.append(i + 1)
-            self.logView.updateContents(
-                self.fileContentsList, self.fileLineNumbers)
+            if self.isVisible():
+                self.logView.updateContentSignal.emit(
+                    self.fileContentsList, self.fileLineNumbers)
         else:
             if not self.fileContents:
                 return
@@ -226,18 +237,24 @@ class LogWatchWindow(QMainWindow):
                         self.fileContentsList.append(contentsList[i])
                         self.fileLineNumbers.append(i + 1)
                 except Exception as e:
-                    self.statusBar().showMessage("Error: " + str(e))
+                    if self.trayIcon.isVisible():
+                        self.trayIcon.showMessage("Error", str(e))
+                    else:
+                        self.statusBar().showMessage("Error: " + str(e))
                     self.fileContentsList = []
                     self.fileLineNumbers = []
                     return
             if self.trayIcon.isVisible():
+                print("about to show message")
+                print(self.fileContentsList[-1])
                 self.trayIcon.showMessage(
                     "New match!",
                     self.fileContentsList[-1])
-            self.statusBar().showMessage(
+            if self.isVisible():
+                self.statusBar().showMessage(
                 "Matched " + str(len(self.fileContentsList)) + " occurences!")
-            self.logView.updateContents(
-                self.fileContentsList, self.fileLineNumbers)
+                self.logView.updateContentSignal.emit(
+                    self.fileContentsList, self.fileLineNumbers)
 
     def refreshLogView(self, event):
         if not self.logFile:
@@ -245,12 +262,19 @@ class LogWatchWindow(QMainWindow):
         try:
             f = open(self.logFile, 'r')
         except Exception as e:
-            self.statusBar().showMessage('Error: ' + str(e))
+            if not self.isVisible():
+                self.runOnShow.append(lambda : self.statusBar().showMessage('Error: ' + str(e)))
+            else:
+                self.statusBar().showMessage('Error: ' + str(e))
             return
         with f:
             self.fileContents = f.read()
-            self.statusBar().showMessage('Refreshed!')
-            self.updateLogView()
+            if self.isVisible():
+                print("The window is fabulously visible!")
+                self.statusBar().showMessage('Refreshed!')
+                self.updateLogView()
+            else:
+                self.updateLogView()
 
     def showAbout(self, event):
         QMessageBox.about(self, "About", """

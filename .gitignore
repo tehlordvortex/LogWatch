@@ -1,3 +1,9 @@
 logwatch.sublime-project
 logwatch.sublime-workspace
 __pycache__/
+build/
+dist/
+test.log
+trace.txt
+.idea/
+logwatch.spec

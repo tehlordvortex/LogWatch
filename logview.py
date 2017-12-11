@@ -1,7 +1,7 @@
 # adapted from http://doc.qt.io/qt-5/qtwidgets-widgets-codeeditor-example.html
 
 from PyQt5.QtWidgets import QPlainTextEdit, QTextEdit
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from PyQt5.QtGui import QTextFormat, QPainter, QColor
 from numbergutter import NumberGutter
 
@@ -11,10 +11,12 @@ class LogView(QPlainTextEdit):
     """
     A widget that displays the contents of the log file
     """
+    updateContentSignal = pyqtSignal(list, list)
 
     def __init__(self, contents, lineNumbers):
         super().__init__()
         self.gutter = NumberGutter(self)
+        self.dirty = False
 
         self.contents = contents
         self.lineNumbers = lineNumbers
@@ -27,6 +29,7 @@ class LogView(QPlainTextEdit):
         self.blockCountChanged.connect(self.updateGutterAreaWidth)
         self.updateRequest.connect(self.updateGutterArea)
         self.cursorPositionChanged.connect(self.highlightCurrentLine)
+        self.updateContentSignal.connect(self.updateContents)
 
         self.updateGutterAreaWidth(0)
         self.highlightCurrentLine()
@@ -35,7 +38,15 @@ class LogView(QPlainTextEdit):
         self.contents = contents
         self.lineNumbers = lineNumbers
         self.setPlainText('\n'.join(self.contents))
-        self.repaint()
+        if self.isVisible():
+            print("I'm so fabulously visible.")
+            self.repaint()
+        else:
+            #self.setAttribute(Qt.WA_DontShowOnScreen)
+            #self.show()
+            self.dirty = True
+            #self.hide()
+            #self.setAttribute(Qt.WA_DontShowOnScreen, false)
 
     def gutterAreaWidth(self):
         if (len(self.lineNumbers) > 0):
@@ -67,6 +78,13 @@ class LogView(QPlainTextEdit):
         cr = self.contentsRect()
         self.gutter.setGeometry(
             QRect(cr.left(), cr.top(), self.gutterAreaWidth(), cr.height()))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        if self.dirty:
+            self.repaint()
+            self.dirty = False
 
     def highlightCurrentLine(self):
         extraSelections = []
