@@ -1,3 +1,4 @@
+DEBUG=True
 import sys, re
 from PyQt5.QtWidgets import (
     QMessageBox, QApplication, QAction,
@@ -8,8 +9,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon, QFont, QTextCharFormat
 from logview import LogView
 from highlighter import HighlightRule, Highlighter
-from PyQt5.QtCore import QRegularExpression, Qt
+from PyQt5.QtCore import QRegularExpression, Qt, QTimer
 from watch import Watch
+import queue
+
+## debug
+import threading
 
 
 class LogWatchWindow(QMainWindow):
@@ -22,6 +27,9 @@ class LogWatchWindow(QMainWindow):
         self.initUI()
 
     def initUI(self):
+
+        if DEBUG:
+            print("Initialized window UI in %s" % threading.current_thread().name)
 
         self.statusBar().showMessage('Ready')
 
@@ -123,6 +131,10 @@ class LogWatchWindow(QMainWindow):
         self.runOnShow = []
 
         self.watch = None
+        self.queue = queue.Queue()
+        self.watchTimer = QTimer(self)
+        self.watchTimer.timeout.connect(self.checkWatch)
+        self.watchTimer.start(0)
 
         self.resize(400, 500)
         self.setWindowTitle('LogWatch')
@@ -167,7 +179,7 @@ class LogWatchWindow(QMainWindow):
                 try:
                     self.fileContents = f.read()
                     if not self.watch:
-                        self.watch = Watch(self.logFile, self.refreshLogView)
+                        self.watch = Watch(self.queue, self.logFile, self.refreshLogView)
                         self.watch.start()
                     else:
                         self.watch.updatePath(self.logFile)
@@ -189,9 +201,19 @@ class LogWatchWindow(QMainWindow):
         for item in self.runOnShow:
             item()
         self.runOnShow = []
-        self.logView.updateContentSignal.emit(
-            self.fileContentsList, self.fileLineNumbers)
+        if self.logFile != "":
+            self.logView.updateContentSignal.emit(
+                self.fileContentsList, self.fileLineNumbers)
         self.trayIcon.setVisible(False)
+
+    def checkWatch(self):
+        try:
+            func, arg = self.queue.get(False)
+            func(arg)
+            self.queue.task_done()
+        except queue.Empty:
+            # nothing on queue, carry on
+            pass
 
     def watchFor(self, event):
         text, ok = QInputDialog.getText(
@@ -217,6 +239,8 @@ class LogWatchWindow(QMainWindow):
             self.statusBar().showMessage("Matching: " + self.pattern)
 
     def updateLogView(self):
+        if DEBUG:
+            print("Updating logview in %s" % threading.current_thread().name)
         if not self.pattern:
             self.fileContentsList = self.fileContents.split('\n')
             self.fileLineNumbers = []
@@ -245,8 +269,9 @@ class LogWatchWindow(QMainWindow):
                     self.fileLineNumbers = []
                     return
             if self.trayIcon.isVisible():
-                print("about to show message")
-                print(self.fileContentsList[-1])
+                if DEBUG:
+                    print("about to show message")
+                    print(self.fileContentsList[-1])
                 self.trayIcon.showMessage(
                     "New match!",
                     self.fileContentsList[-1])
@@ -287,10 +312,10 @@ class LogWatchWindow(QMainWindow):
                 </a>, 
                 <a href="https://qt.io">
                     Qt5
-                </a> and 
+                </a>,
                 <a href="https://python.org">
                     Python
-                </a>,
+                </a>, and
                 <a href="https://pypi.python.org/pypi/watchdog">
                     Watchdog
                 </a>.

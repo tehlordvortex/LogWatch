@@ -39,7 +39,6 @@ class LogView(QPlainTextEdit):
         self.lineNumbers = lineNumbers
         self.setPlainText('\n'.join(self.contents))
         if self.isVisible():
-            print("I'm so fabulously visible.")
             self.repaint()
         else:
             #self.setAttribute(Qt.WA_DontShowOnScreen)
